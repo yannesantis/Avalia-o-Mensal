@@ -1,14 +1,28 @@
 from produto import Produto
 
-class ItemVenda:
-    def __init__(self, quantidade: int, produto: Produto):
-        self.quantidade = quantidade
-        self.produto = produto
-        # O valor do item é calculado automaticamente
-        self.valor_item = quantidade * produto.preco_unitario
+class Item_Venda:
+    
+    def __init__(self, produto:Produto, quantidade: int):
+        self._produto = produto
+        self._quantidade = quantidade
+        self._valor = self._calcular_subtotal()
+    
+    @property
+    def produto(self):
+        return self._produto
+    
+    @property
+    def quantidade(self):
+        return self._quantidade
 
-    def calcular_subtotal(self) -> float:
-        return self.valor_item
+    @quantidade.setter
+    def quantidade(self, quantidade):
+        self._quantidade = quantidade
+        self._valor = self._calcular_subtotal()
 
-    def __str__(self):
-        return f"{self.quantidade}x {self.produto.descricao} - Subtotal: R$ {self.valor_item:.2f}"
+    @property
+    def valor(self):
+        return self._valor
+
+    def _calcular_subtotal(self):
+        return self._produto.preco_unitario * self._quantidade
