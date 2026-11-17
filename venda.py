@@ -1,41 +1,64 @@
 from datetime import datetime
+from item_venda import Item_Venda
 from produto import Produto
-from item_venda import ItemVenda
+from pagamento import Pagamento
 
 class Venda:
-    def __init__(self):
-        self.data = datetime.now()
-        self.valor_total = 0.0
-        self.itens = []  # Lista para guardar os itens
 
-    def calcular_total(self) -> float:
-        """Percorre todos os itens e soma os subtotais."""
-        self.valor_total = sum(item.calcular_subtotal() for item in self.itens)
-        return self.valor_total
+    def __init__(self, pagamento: Pagamento, data_venda: datetime = None):
+        self._valor_total = 0.0
+        self._data_venda = data_venda if data_venda else datetime.now()
+        self._itens: list[Item_Venda] = []
+        self._pagamento = pagamento
 
-    def adicionar_item(self, produto: Produto, quant: int):
-        """Verifica o estoque, cria o ItemVenda e adiciona à lista."""
-        if produto.decrementar_estoque(quant):
-            novo_item = ItemVenda(quant, produto)
-            self.itens.append(novo_item)
-            print(f"Item adicionado: {quant}x {produto.descricao}")
-            self.calcular_total()
+    @property
+    def itens(self):
+        return self._itens
+
+    @property
+    def pagamento(self):
+        return self._pagamento
+
+    def adicionar_item(self, produto: Produto, quantidade: int):
+        if produto.decrementar_estoque(quantidade):
+            novo_item = Item_Venda(produto, quantidade)
+            self._itens.append(novo_item)
+            self._valor_total += novo_item.valor
+            return True
         else:
-            print(f"Erro: Estoque insuficiente para {produto.descricao} (Disponível: {produto.estoque})")
+            return False
 
     def remover_item(self, produto: Produto):
-        """Busca o item pelo produto, remove e devolve ao estoque."""
-        item_para_remover = None
-        for item in self.itens:
+        for item in self._itens:
             if item.produto == produto:
-                item_para_remover = item
-                break
-        
-        if item_para_remover:
-            # Devolve a quantidade ao estoque do produto
-            produto.estoque += item_para_remover.quantidade
-            self.itens.remove(item_para_remover)
-            print(f"Item removido: {produto.descricao}")
-            self.calcular_total()
-        else:
-            print(f"Item {produto.descricao} não encontrado na venda.")
+                self._itens.remove(item)
+                self._valor_total -= item.valor
+                produto.incrementar_estoque(item.quantidade)
+                return True
+        return False
+
+    def calcular_valor_total(self):
+        return self._valor_total
+
+    def finalizar_venda(self):
+        # Polimorfismo: funciona para qualquer tipo de pagamento
+        return self._pagamento.calcular_valor_final(self._valor_total)
+
+    def __str__(self):
+        string = "\n========== COMPROVANTE =========="
+        string += f"\nVenda: {self._data_venda.strftime('%d/%m/%Y %H:%M:%S')}"
+        string += "\n---------------------------------"
+
+        for item in self._itens:
+            string += (
+                f"\n{item.produto.descricao} | "
+                f"{item.quantidade}x | "
+                f"R$ {item.produto.preco_unitario:.2f} | "
+                f"Subtotal: R$ {item.valor:.2f}"
+            )
+        string += "\n---------------------------------"
+        string += f"\nValor total: R$ {self.calcular_valor_total():.2f}"
+        string += f"\nPagamento: {self._pagamento.nome}"
+        string += f"\nValor final: R$ {self.finalizar_venda():.2f}"
+        string += "\n================================="
+        return string
